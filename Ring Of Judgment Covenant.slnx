@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/Generated/">
+    <Project Path="Generated/SHC.Generated.Main/SHC.Generated.Main.csproj" />
+    <Project Path="Generated/SHC.Generated.Opening/SHC.Generated.Opening.csproj" />
+  </Folder>
+  <Project Path="SHC.Core/SHC.Core.csproj" />
+  <Project Path="SHC.ELF/SHC.ELF.csproj" />
+  <Project Path="SHC.Harness/SHC.Harness.csproj" />
+  <Project Path="SHC.Inspector/SHC.Inspector.csproj" />
+  <Project Path="SHC.ISO/SHC.ISO.csproj" />
+  <Project Path="SHC.Recompiler/SHC.Recompiler.csproj" />
+  <Project Path="SHC.Runtime/SHC.Runtime.csproj" />
+</Solution>

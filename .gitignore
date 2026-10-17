@@ -1,0 +1,19 @@
+# Configurações locais de IDEs
+.idea/
+.vs/
+.vscode/
+
+# Arquivos de compilação e restauração do .NET
+**/bin/
+**/obj/
+
+# ISOs e arquivos locais do jogo
+/isos/
+/output/
+/Generated/
+/files.zip
+
+# Arquivos temporários e logs
+*.log
+*.tmp
+*.cache
