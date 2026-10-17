@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using SHC.Generated.Main;
+using SHC.Recompiler.Decoding;
 using SHC.Runtime.Cpu;
 using SHC.Runtime.Loading;
 using SHC.Runtime.Machine;
@@ -137,9 +138,11 @@ internal sealed class DifferentialTests
 
         Exception? referenceError = null;
 
+        var interpreter = new Interpreter(_ctx);
+
         try
         {
-            new Interpreter(_ctx).Run(entry, Sentinel, _budget);
+            interpreter.Run(entry, Sentinel, _budget);
         }
         catch (BudgetExceededException)
         {
@@ -203,11 +206,25 @@ internal sealed class DifferentialTests
                 return;
             }
 
+            // Dados para descobrir onde os dois lados se separaram.
+            string recent = string.Join(
+                ", ",
+                interpreter.RecentAddresses().Select(a => $"0x{a:X8}"));
+
+            string registers =
+                referenceState.Compare(RegisterState.From(_ctx)) ?? "(registradores iguais)";
+
             Fail(
                 entry,
                 seed,
                 $"exceções diferentes: recompilado={Describe(actualError)}; " +
-                $"interpretador={Describe(referenceError)}");
+                $"interpretador={Describe(referenceError)}\n" +
+                $"      interpretador parou em 0x{interpreter.FaultAddress:X8}: " +
+                $"{Disassemble(interpreter.FaultAddress)} | " +
+                $"{Disassemble(interpreter.FaultAddress + 4)}\n" +
+                $"      últimos endereços do interpretador: {recent}\n" +
+                $"      primeira diferença de registrador no momento da exceção: {registers}\n" +
+                $"      pilha do recompilado: {Frames(actualError)}");
 
             return;
         }
@@ -216,8 +233,13 @@ internal sealed class DifferentialTests
             entry,
             seed,
             actualError is not null
-                ? $"só o código recompilado lançou exceção: {Describe(actualError)}"
-                : $"só o interpretador lançou exceção: {Describe(referenceError!)}");
+                ? $"só o código recompilado lançou exceção: {Describe(actualError)}\n" +
+                  $"      pilha do recompilado: {Frames(actualError)}"
+                : $"só o interpretador lançou exceção: {Describe(referenceError!)}\n" +
+                  $"      interpretador parou em 0x{interpreter.FaultAddress:X8}: " +
+                  $"{Disassemble(interpreter.FaultAddress)} | " +
+                  $"{Disassemble(interpreter.FaultAddress + 4)}\n" +
+                  $"      caminho recente do interpretador:\n{Trace(interpreter)}");
     }
 
     // Executa a função recompilada em uma thread com pilha grande e limite de tempo.
@@ -270,6 +292,35 @@ internal sealed class DifferentialTests
     }
 
     private static string Describe(Exception ex) => $"{ex.GetType().Name}: {ex.Message}";
+
+    // Assembly da instrução no endereço, lida da memória atual.
+    private string Disassemble(uint address)
+    {
+        try
+        {
+            return R5900Disassembler.Format(
+                R5900Decoder.Decode(address, _memory.Read32(address)));
+        }
+        catch (Exception)
+        {
+            return "?";
+        }
+    }
+
+    // Últimas instruções executadas pelo interpretador, uma por linha.
+    private string Trace(Interpreter interpreter) =>
+        string.Join(
+            "\n",
+            interpreter.RecentAddresses().Select(a => $"        0x{a:X8}: {Disassemble(a)}"));
+
+    // Primeiros quadros da pilha de uma exceção (método e linha do código gerado).
+    private static string Frames(Exception ex) =>
+        string.Join(
+            " <- ",
+            (ex.StackTrace ?? string.Empty)
+                .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                .Take(3)
+                .Select(line => line.Trim()));
 
     // ----- Estado inicial aleatório -----
 
@@ -370,7 +421,7 @@ internal sealed class DifferentialTests
 
         if (kind < 95)
         {
-            return ((ulong)rng.NextInt64() << 1) | (ulong)rng.Next(2);
+            return ((ulong)rng.NextInt64() << 1) | (uint)rng.Next(2);
         }
 
         ulong[] edges =

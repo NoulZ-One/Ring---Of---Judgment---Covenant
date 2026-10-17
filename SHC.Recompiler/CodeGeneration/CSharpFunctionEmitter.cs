@@ -97,6 +97,19 @@ public static class CSharpFunctionEmitter
                 }
             }
 
+            // A execução começa na entrada. Os blocos saem em ordem crescente de
+            // endereço; se algum fica abaixo da entrada (alcançado por um desvio
+            // para trás), o primeiro bloco do arquivo não é a entrada e é preciso
+            // saltar para ela no início do método.
+            bool entryFirst =
+                _function.Blocks.Count > 0 &&
+                _function.Blocks[0].Start == _function.Entry;
+
+            if (!entryFirst)
+            {
+                _labels.Add(_function.Entry);
+            }
+
             var text = new StringBuilder();
 
             if (_comments)
@@ -112,6 +125,11 @@ public static class CSharpFunctionEmitter
             text.AppendLine("    ulong[] r = ctx.R;");
             text.AppendLine("    uint[] f = ctx.F;");
             text.AppendLine("    Ps2Memory m = ctx.Memory;");
+
+            if (!entryFirst)
+            {
+                text.AppendLine($"    goto L_{_function.Entry:X8};");
+            }
 
             foreach (BasicBlock block in _function.Blocks)
             {

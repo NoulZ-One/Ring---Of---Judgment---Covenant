@@ -21,11 +21,42 @@ internal sealed class Interpreter
     private readonly Ps2Memory _m;
     private readonly ulong[] _r;
 
+    // Últimos endereços executados (anel de 32), para diagnóstico.
+    private readonly uint[] _recent = new uint[32];
+
+    // Profundidade de chamadas feitas pela própria execução e endereço de término.
+    // No nível mais alto, JR $ra encerra a função, como o código recompilado
+    // (que só faz return e ignora o valor de $ra).
+    private int _depth;
+    private uint _sentinel;
+    private long _recentCount;
+
     public Interpreter(R5900Context context)
     {
         _c = context;
         _m = context.Memory;
         _r = context.R;
+    }
+
+    /// <summary>
+    /// Endereço do desvio ou instrução que estava sendo executada quando ocorreu
+    /// uma exceção. Se a falha foi no delay slot, é o endereço do desvio (o delay
+    /// slot fica 4 bytes depois).
+    /// </summary>
+    public uint FaultAddress { get; private set; }
+
+    /// <summary>Últimos endereços executados, do mais antigo ao mais recente (até 32).</summary>
+    public IReadOnlyList<uint> RecentAddresses()
+    {
+        int count = (int)Math.Min(_recentCount, _recent.Length);
+        var result = new uint[count];
+
+        for (int i = 0; i < count; i++)
+        {
+            result[i] = _recent[(_recentCount - count + i) % _recent.Length];
+        }
+
+        return result;
     }
 
     /// <summary>Executa a função em <paramref name="entry"/> até voltar ao endereço sentinela.</summary>
@@ -34,6 +65,9 @@ internal sealed class Interpreter
         uint pc = entry;
         long steps = 0;
 
+        _sentinel = sentinel;
+        _depth = 0;
+
         while (pc != sentinel)
         {
             if (++steps > budget)
@@ -41,7 +75,18 @@ internal sealed class Interpreter
                 throw new BudgetExceededException();
             }
 
-            pc = Step(pc);
+            _recent[_recentCount % _recent.Length] = pc;
+            _recentCount++;
+
+            try
+            {
+                pc = Step(pc);
+            }
+            catch
+            {
+                FaultAddress = pc;
+                throw;
+            }
         }
     }
 
@@ -76,6 +121,7 @@ internal sealed class Interpreter
             case Opcode.Bc1fl: return Branch(pc, i, !_c.Condition, true);
 
             case Opcode.Bgezal when rs == 0:
+                _depth++;
                 _r[31] = pc + 8;
                 Exec(Fetch(pc + 4));
                 return i.BranchTarget;
@@ -85,6 +131,7 @@ internal sealed class Interpreter
                 return i.JumpTarget;
 
             case Opcode.Jal:
+                _depth++;
                 _r[31] = pc + 8;
                 Exec(Fetch(pc + 4));
                 return i.JumpTarget;
@@ -93,6 +140,18 @@ internal sealed class Interpreter
             {
                 uint target = (uint)_r[rs];
 
+                if (rs == 31)
+                {
+                    // Retorno. No nível mais alto, termina a função sem seguir o valor de $ra.
+                    if (_depth == 0)
+                    {
+                        Exec(Fetch(pc + 4));
+                        return _sentinel;
+                    }
+
+                    _depth--;
+                }
+
                 Exec(Fetch(pc + 4));
                 return target;
             }
@@ -100,6 +159,8 @@ internal sealed class Interpreter
             case Opcode.Jalr:
             {
                 uint target = (uint)_r[rs];
+
+                _depth++;
 
                 if (i.Rd != 0)
                 {
