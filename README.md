@@ -15,6 +15,18 @@ The project will be updated slowly. I'm focusing on Shadow Hearts 1 first.
 
 ---
 
+
+# Vulkan
+
+> No Futuro, é certo a implementação de **Vulkan**, para que também seja possível jogar no linux.
+
+
+> In the future, the implementation of **Vulkan** is certain, which will also make it possible to play on Linux.
+
+---
+
+
+
 **Por que está sendo feito em C#/.NET?**
 
 Porque eu estudo C#. pretendo usar esse projeto no futuro como estudo e também pretendo revisitar esse código mesmo quando ele estiver pronto.
@@ -28,6 +40,7 @@ Porque eu estudo C#. pretendo usar esse projeto no futuro como estudo e também 
 
 
  ---
+
 
  
 
