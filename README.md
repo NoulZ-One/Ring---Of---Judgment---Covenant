@@ -15,6 +15,9 @@ The project will be updated slowly. I'm focusing on Shadow Hearts 1 first.
 
 ---
 
+## Status: ~5%
+
+---
 
 # Vulkan
 
