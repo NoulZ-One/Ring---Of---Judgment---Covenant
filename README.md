@@ -15,7 +15,7 @@ The project will be updated slowly. I'm focusing on Shadow Hearts 1 first.
 
 ---
 
-## Status: ~5%
+## Status: ~13%
 
 ---
 
@@ -44,7 +44,9 @@ Porque eu estudo C#. pretendo usar esse projeto no futuro como estudo e também 
 
  ---
 
+**Falarei mais sobre o projeto em breve. Meu Foco Total é Shadow Hearts 1, mas esse aqui também está sendo desenvolvido em paralelo, porém com menos foco.**
 
+**I’ll share more about the project soon. My primary focus is *Shadow Hearts 1*, but this one is also being developed in parallel, though with less focus.**
  
 
  
